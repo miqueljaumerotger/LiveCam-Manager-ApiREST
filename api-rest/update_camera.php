@@ -1,4 +1,7 @@
 <?php
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
+
 require_once('../includes/Database.class.php');
 
 header("Access-Control-Allow-Origin: *");
@@ -12,8 +15,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 $data = json_decode(file_get_contents("php://input"));
 
-if (!$data || !isset($data->id)) {
-    echo json_encode(["success" => false, "error" => "ID o dades invàlides"]);
+if (!isset($data->id)) {
+    echo json_encode(["success" => false, "error" => "Falten camps obligatoris."]);
     exit();
 }
 
@@ -35,31 +38,35 @@ try {
             url_video = :url_video,
             model_id = :model_id,
             illa_id = :illa_id,
-            active = :active,
-            status = :status
+            status = :status,
+            active = :active
         WHERE id = :id
     ");
 
-    $stmt->execute([
-        ':name' => $data->name ?? '',
-        ':cam_ip' => $data->cam_ip ?? '',
-        ':cam_username' => $data->cam_username ?? '',
-        ':cam_password' => $data->cam_password ?? '',
-        ':cam_port' => $data->cam_port ?? '',
-        ':location' => $data->location ?? '',
-        ':latitude' => $data->latitude ?? '',
-        ':longitude' => $data->longitude ?? '',
-        ':url_preview' => $data->url_preview ?? '',
-        ':url_video' => $data->url_video ?? '',
-        ':model_id' => !empty($data->model_id) ? $data->model_id : null,
-        ':illa_id' => !empty($data->illa_id) ? $data->illa_id : null,
-        ':active' => isset($data->active) ? (int)$data->active : 1,
-        ':status' => $data->status ?? 'online',
-        ':id' => $data->id,
-    ]);
+    $stmt->bindValue(':name', $data->name ?? '');
+    $stmt->bindValue(':cam_ip', $data->cam_ip ?? '');
+    $stmt->bindValue(':cam_username', $data->cam_username ?? '');
+    $stmt->bindValue(':cam_password', $data->cam_password ?? '');
+    $stmt->bindValue(':cam_port', $data->cam_port ?? '');
+    $stmt->bindValue(':location', $data->location ?? '');
+    $stmt->bindValue(':latitude', $data->latitude ?? '');
+    $stmt->bindValue(':longitude', $data->longitude ?? '');
+    $stmt->bindValue(':url_preview', $data->url_preview ?? '');
+    $stmt->bindValue(':url_video', $data->url_video ?? '');
+    $stmt->bindValue(':model_id', $data->model_id ?? null);
+    $stmt->bindValue(':illa_id', $data->illa_id ?? null);
+    $stmt->bindValue(':status', $data->status ?? '');
+    $stmt->bindValue(':active', isset($data->active) ? (int)$data->active : 1, PDO::PARAM_INT);
+    $stmt->bindValue(':id', $data->id);
 
-    echo json_encode(["success" => true, "message" => "Càmera actualitzada correctament"]);
-} catch (PDOException $e) {
-    echo json_encode(["success" => false, "error" => $e->getMessage()]);
+    if ($stmt->execute()) {
+        echo json_encode([
+            "success" => true,
+            "message" => "Càmera actualitzada correctament"
+        ]);
+    } else {
+        echo json_encode(["success" => false, "error" => "No s’ha pogut actualitzar la càmera."]);
+    }
+} catch (Exception $e) {
+    echo json_encode(["success" => false, "error" => "Error del servidor: " . $e->getMessage()]);
 }
-?>
